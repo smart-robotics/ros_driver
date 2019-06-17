@@ -17,6 +17,8 @@
 #include "ensenso_camera/parameters.h"
 #include "ensenso_camera/pose_utilities.h"
 
+
+
 /**
  * The interval at which we publish diagnostic messages containing the camera
  * status.
@@ -811,7 +813,7 @@ void Camera::handleLinkedCameraRequestData(ensenso_camera_msgs::RequestDataGoalC
 
       // Set depth map of action result (3 channel image with 3D Coordinates(x,y,z)): image size is the same as disparity map
       result.depth_map = *cv_image.toImageMsg();
-    
+      
       if(goal->log_time)
         ROS_INFO("Set disparity map %.3f", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - setMapStartTime ).count());
        }
@@ -877,9 +879,13 @@ void Camera::handleLinkedCameraRequestData(ensenso_camera_msgs::RequestDataGoalC
       }
 
       // Get point cloud in the correct format and publish it. This point cloud in the frame of the depth camera
-      auto pointCloud = pointCloudFromNxLib(rootNode[itmImages][itmRenderPointMap], targetFrame, pointCloudROI, true);
-      pcl::toROSMsg(*pointCloud, result.registered_point_cloud);
+      auto pointCloud = pointCloudFromNxLib(rootNode[itmImages][itmRenderPointMap], cameraFrame, pointCloudROI, true);
+      pcl::toROSMsg(*pointCloud, result.point_cloud);
       auto publishLinkedPointCloudEndTime = std::chrono::high_resolution_clock::now();
+
+      pcl::PointCloud<pcl::PointXYZ>pointCloud_MONO;
+      pcl_ros::transformPointCloud(linkedCameraFrame, *pointCloud, pointCloud_MONO, listener);
+      pcl::toROSMsg(pointCloud_MONO, result.registered_point_cloud);
 
       if(goal->log_time)
       {

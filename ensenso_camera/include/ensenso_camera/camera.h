@@ -32,6 +32,7 @@
 #include "ensenso_camera/calibration_pattern.h"
 #include "ensenso_camera/point_cloud_utilities.h"
 #include "ensenso_camera/queued_action_server.h"
+#include "pcl_ros/transforms.h"
 
 #include "nxLib.h"
 
@@ -117,6 +118,7 @@ private:
 
   // Linked camera
   linkedCamera linkedMonoCamera;
+  tf::TransformListener listener;
 
   std::string cameraFrame;
   std::string linkedCameraFrame;
