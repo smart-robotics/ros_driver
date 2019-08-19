@@ -118,6 +118,9 @@ private:
   // Whether the linked monocular camera should use auto exposure or not
   bool linked_camera_auto_exposure;
 
+  // NUmber of point clouds that were saved
+  int point_cloud_count;
+
   // Linked camera
   linkedCamera linkedMonoCamera;
 

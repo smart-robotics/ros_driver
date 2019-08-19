@@ -8,6 +8,32 @@
 
 double const NXLIB_TIMESTAMP_OFFSET = 11644473600;
 
+void saveNodePointCloudFromNxLib(NxLibItem const& node, std::string filename, std::string format)
+{
+  int width, height;
+  double timestamp;
+  std::vector<float> data;
+
+  node.getBinaryDataInfo(&width, &height, 0, 0, 0, &timestamp);
+  node.getBinaryData(data, 0);
+
+  pcl::PointCloud<pcl::PointXYZ> cloud;
+
+  for (int i = 0; i < width * height; i++)
+  {
+
+      if(!std::isnan(data[i * 3]))
+      {
+          pcl::PointXYZ new_point(data[i * 3] / 1000.0f, data[3 * i + 1] / 1000.0f, data[3 * i + 2] / 1000.0f);
+          cloud.push_back(new_point);
+      }    
+  }
+
+  pcl::io::savePCDFile(filename + "." + format, cloud);
+
+}
+
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr pointCloudFromNxLib(NxLibItem const& node, std::string const& frame,
                                                         PointCloudROI const* roi, bool const replace_nan)
 {

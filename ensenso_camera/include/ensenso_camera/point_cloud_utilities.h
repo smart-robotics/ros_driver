@@ -2,6 +2,7 @@
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
 
 #include <string>
 
@@ -59,3 +60,12 @@ pcl::PointCloud<pcl::PointNormal>::Ptr pointCloudWithNormalsFromNxLib(NxLibItem 
                                                                       NxLibItem const& normalNode,
                                                                       std::string const& frame,
                                                                       PointCloudROI const* roi = 0);
+
+/**
+ * @brief      Saves a node point cloud from nx library.
+ *
+ * @param      node      The node
+ * @param[in]  filename  The filename
+ * @param[in]  format    The format to save the point cloud
+ */
+void saveNodePointCloudFromNxLib(NxLibItem const& node, std::string filename, std::string format="pcd");

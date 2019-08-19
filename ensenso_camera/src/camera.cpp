@@ -198,6 +198,7 @@ Camera::Camera(ros::NodeHandle nh, std::string const& serial, std::string const&
 
   defaultParameters = NxLibItem()["rosDefaultParameters"];
   rootNode = NxLibItem();
+  point_cloud_count = 0;
 }
 
 bool Camera::open()
@@ -799,6 +800,9 @@ void Camera::handleLinkedCameraRequestData(ensenso_camera_msgs::RequestDataGoalC
       computePointMap.parameters()[itmCameras] = serial;   
       computePointMap.execute();
       cv::Mat depthPointMap;
+
+      saveNodePointCloudFromNxLib(cameraNode[itmImages][itmPointMap], "/tmp/clouds/cloud_" + std::to_string(point_cloud_count));
+      point_cloud_count++;
 
       cv::Mat depthMap, floatDepthMap;
       imageFromNxLibNodeToOpencvMat(depthMap, cameraNode[itmImages][itmPointMap]);
