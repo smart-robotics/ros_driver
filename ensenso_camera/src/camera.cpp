@@ -914,7 +914,28 @@ void Camera::handleLinkedCameraRequestData(ensenso_camera_msgs::RequestDataGoalC
 
       // Get point cloud in the correct format and publish it. This point cloud in the frame of the depth camera
       auto pointCloud = pointCloudFromNxLib(rootNode[itmImages][itmRenderPointMap], targetFrame, pointCloudROI, true);
-      pcl::toROSMsg(*pointCloud, result.registered_point_cloud);
+
+      if(goal->request_rotated_depth_map){
+        tf::StampedTransform cam_ROBOT;
+        // Read transform between the two cameras
+        try
+        {
+          transformListener.lookupTransform(leveledCameraFrame, cameraFrame, ros::Time(0), cam_ROBOT);
+        }
+        catch (tf::TransformException& e)
+        {
+          ROS_ERROR("Error reading camera pose %s", cameraFrame);
+        }
+
+        // Apply transformation
+        pcl::PointCloud<pcl::PointXYZ>::Ptr transformedPointCloud (new pcl::PointCloud<pcl::PointXYZ> ());
+        pcl_ros::transformPointCloud(*pointCloud, *transformedPointCloud, cam_ROBOT);
+        pcl::toROSMsg(*transformedPointCloud, result.registered_point_cloud);
+        
+      }else
+        pcl::toROSMsg(*pointCloud, result.registered_point_cloud);
+
+
       auto publishLinkedPointCloudEndTime = std::chrono::high_resolution_clock::now();
 
       if(goal->log_time)
@@ -948,7 +969,6 @@ boost::shared_ptr<sr::rgbd::Image> Camera::computeRotatedDepthMap()
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr transformedPointCloud (new pcl::PointCloud<pcl::PointXYZ> ());
   tf::StampedTransform cam_ROBOT;
-
 
   // Read transform between the two cameras
   try
