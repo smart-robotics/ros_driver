@@ -116,7 +116,7 @@ void publishCameraPose(tf::StampedTransform virtualCamPose, std::string baseFram
 }
 
 
-tf::StampedTransform computeLeveledCameraPose(tf::StampedTransform originalPose)
+tf::StampedTransform computeLeveledCameraPose(tf::StampedTransform originalPose,  tf::StampedTransform linkedCamOriginalPose)
 {
 
   //  Create rotation matrix without pitch or roll
@@ -131,7 +131,8 @@ tf::StampedTransform computeLeveledCameraPose(tf::StampedTransform originalPose)
   tf::StampedTransform leveledCameraPose;
   leveledCameraPose.setRotation(q);
 
-  // Set the x,y,z in the world to be that of the original camera
-  leveledCameraPose.setOrigin(originalPose.getOrigin());
+  // Use x,y from linked camera and z from default camera
+  tf::Vector3 origin(linkedCamOriginalPose.getOrigin().getX(), linkedCamOriginalPose.getOrigin().getY(), originalPose.getOrigin().getZ());
+  leveledCameraPose.setOrigin(origin);
   return leveledCameraPose;
 }

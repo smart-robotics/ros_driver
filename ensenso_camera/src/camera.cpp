@@ -282,7 +282,7 @@ bool Camera::open()
 
     }
 
-    tf::StampedTransform cam_ROBOT;
+    tf::StampedTransform linked_cam_ROBOT, cam_ROBOT;
 
     try
     {
@@ -292,8 +292,24 @@ bool Camera::open()
     {
       ROS_ERROR("Error reading camera pose %s", cameraFrame);
     }
+    
+    if(serialLinkedCamera != "")
+    {
+      try
+      {
+        transformListener.lookupTransform( std::string(std::getenv("ROBOT")) + "/base_link", linkedCameraFrame, ros::Time(0), linked_cam_ROBOT);
+      }
+      catch (tf::TransformException& e)
+      {
+        ROS_ERROR("Error reading camera pose %s", linkedCameraFrame);
+      }
+    }else
+    {
+      linked_cam_ROBOT = cam_ROBOT;
+    }
 
-    tf::StampedTransform leveledCameraPose = computeLeveledCameraPose(cam_ROBOT);
+
+    tf::StampedTransform leveledCameraPose = computeLeveledCameraPose(cam_ROBOT, linked_cam_ROBOT );
 
     publishCameraPose(leveledCameraPose, std::string(std::getenv("ROBOT")) + "/base_link", leveledCameraFrame, static_tf_broadcaster);
 

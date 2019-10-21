@@ -54,4 +54,4 @@ void publishCameraPose(tf::StampedTransform virtualCamPose, std::string baseFram
  *
  * @return     The leveled camera pose.
  */
-tf::StampedTransform computeLeveledCameraPose(tf::StampedTransform originalPose);
+tf::StampedTransform computeLeveledCameraPose(tf::StampedTransform originalPose, tf::StampedTransform linkedCamOriginalPose);
