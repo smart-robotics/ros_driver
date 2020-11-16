@@ -1690,21 +1690,29 @@ ros::Time Camera::captureLinkedCameraImage(ensenso_camera_msgs::RequestDataResul
 
     return timestampFromNxLibNode(linkedMonoCamera.node[itmImages][itmRaw]);
 }
-
 ros::Time Camera::capture() const
 {
   ROS_DEBUG("Capturing an image...");
 
-  NxLibCommand capture(cmdCapture);
-  capture.parameters()[itmCameras] = serial;
-  capture.execute();
-
-  NxLibItem imageNode = cameraNode[itmImages][itmRaw];
-  if (imageNode.isArray())
+  try
   {
-    imageNode = imageNode[0];
+
+    NxLibCommand capture(cmdCapture);
+    capture.parameters()[itmCameras] = serial;
+    capture.execute();
+
+    NxLibItem imageNode = cameraNode[itmImages][itmRaw];
+    if (imageNode.isArray())
+    {
+      imageNode = imageNode[0];
+    }
+    imageNode = imageNode[itmLeft];
   }
-  imageNode = imageNode[itmLeft];
+
+  catch (NxLibException& e) { // Display NxLib API exceptions, if any
+    printf("An NxLib API error with code %d (%s) occurred while capturing stereo image %s.\n", e.getErrorCode(), e.getErrorText().c_str(), e.getItemPath().c_str());
+  }
+
 
   return timestampFromNxLibNode(imageNode);
 }
