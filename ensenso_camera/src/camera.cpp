@@ -1707,14 +1707,15 @@ ros::Time Camera::capture() const
       imageNode = imageNode[0];
     }
     imageNode = imageNode[itmLeft];
+
+    return timestampFromNxLibNode(imageNode);
+
   }
 
   catch (NxLibException& e) { // Display NxLib API exceptions, if any
     printf("An NxLib API error with code %d (%s) occurred while capturing stereo image %s.\n", e.getErrorCode(), e.getErrorText().c_str(), e.getItemPath().c_str());
   }
 
-
-  return timestampFromNxLibNode(imageNode);
 }
 
 std::vector<CalibrationPattern> Camera::collectPattern(bool clearBuffer) const
