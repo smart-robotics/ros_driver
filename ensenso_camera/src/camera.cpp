@@ -285,10 +285,8 @@ bool Camera::open()
       static_transform.header.frame_id = cameraFrame ;
       static_transform.child_frame_id = linkedCameraFrame;
       static_tf_broadcaster.sendTransform(static_transform);
-      std::cout << "TRANSFROM:: " << cameraFrame << " " << linkedCameraFrame << std::endl; 
       ros::Rate rr(10);
       rr.sleep();
-
 
       ROS_INFO("Published linked cam tf");
       
@@ -303,7 +301,7 @@ bool Camera::open()
     }
     catch (tf::TransformException& e)
     {
-      ROS_ERROR("Error reading camera pose %s", cameraFrame);
+      ROS_WARN("Error reading camera pose %s", cameraFrame);
     }
 
     if(linkedMonoCamera.exists){
@@ -314,7 +312,7 @@ bool Camera::open()
       }
       catch (tf::TransformException& e)
       {
-        ROS_ERROR("Error reading camera pose %s", cameraFrame);
+        ROS_WARN("Error reading camera pose %s", cameraFrame);
       }
 
       tf::Vector3 translation(linkedcam_ROBOT.getOrigin().getX(), linkedcam_ROBOT.getOrigin().getY(), cam_ROBOT.getOrigin().getZ() );
