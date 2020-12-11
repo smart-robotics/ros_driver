@@ -1,3 +1,9 @@
+# Release v1.6.5
+
+## Misc
+
+* Changed print to screen level from error to debug when the camera pose fails to be published to the TF
+
 # Release v1.6.2
 
 ## Bug fixes
