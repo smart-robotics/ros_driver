@@ -5,8 +5,6 @@
 
 #include "nxLib.h"
 
-#include "ensenso_camera/helper.h"
-
 namespace ensenso_camera
 {
 void Nodelet::onInit()
@@ -98,7 +96,7 @@ void Nodelet::onInit()
   }
 
   NODELET_DEBUG("Opening the camera '%s'...", serial.c_str());
-  camera = make_unique<Camera>(nh, serial, fileCameraPath, cameraIsFixed, cameraFrame, targetFrame, robotFrame,
+  camera = std::make_unique<Camera>(nh, serial, fileCameraPath, cameraIsFixed, cameraFrame, targetFrame, robotFrame,
                                wristFrame, linkedCameraFrame, linked_camera_auto_exposure, leveledCameraFrame);
   if (!camera->open())
   {
