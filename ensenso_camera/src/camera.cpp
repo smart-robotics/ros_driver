@@ -12,7 +12,6 @@
 #include <sensor_msgs/distortion_models.h>
 #include "pcl_ros/point_cloud.h"
 
-#include "ensenso_camera/helper.h"
 #include "ensenso_camera/image_utilities.h"
 #include "ensenso_camera/parameters.h"
 #include "ensenso_camera/pose_utilities.h"
@@ -160,26 +159,26 @@ Camera::Camera(ros::NodeHandle nh, std::string const& serial, std::string const&
   rightRectifiedCameraInfo = boost::make_shared<sensor_msgs::CameraInfo>();
 
   accessTreeServer =
-      make_unique<AccessTreeServer>(nh, "access_tree", boost::bind(&Camera::onAccessTree, this, _1));
+      std::make_unique<AccessTreeServer>(nh, "access_tree", boost::bind(&Camera::onAccessTree, this, _1));
   executeCommandServer =
-      make_unique<ExecuteCommandServer>(nh, "execute_command", boost::bind(&Camera::onExecuteCommand, this, _1));
+      std::make_unique<ExecuteCommandServer>(nh, "execute_command", boost::bind(&Camera::onExecuteCommand, this, _1));
 
   getParameterServer =
-      make_unique<GetParameterServer>(nh, "get_parameter", boost::bind(&Camera::onGetParameter, this, _1));
+      std::make_unique<GetParameterServer>(nh, "get_parameter", boost::bind(&Camera::onGetParameter, this, _1));
   setParameterServer =
-      make_unique<SetParameterServer>(nh, "set_parameter", boost::bind(&Camera::onSetParameter, this, _1));
+      std::make_unique<SetParameterServer>(nh, "set_parameter", boost::bind(&Camera::onSetParameter, this, _1));
 
   requestDataServer =
-      make_unique<RequestDataServer>(nh, "request_data", boost::bind(&Camera::onRequestData, this, _1));
+      std::make_unique<RequestDataServer>(nh, "request_data", boost::bind(&Camera::onRequestData, this, _1));
   locatePatternServer =
-      make_unique<LocatePatternServer>(nh, "locate_pattern", boost::bind(&Camera::onLocatePattern, this, _1));
+      std::make_unique<LocatePatternServer>(nh, "locate_pattern", boost::bind(&Camera::onLocatePattern, this, _1));
   projectPatternServer =
-      make_unique<ProjectPatternServer>(nh, "project_pattern", boost::bind(&Camera::onProjectPattern, this, _1));
+      std::make_unique<ProjectPatternServer>(nh, "project_pattern", boost::bind(&Camera::onProjectPattern, this, _1));
   calibrateHandEyeServer =
-      make_unique<CalibrateHandEyeServer>(nh, "calibrate_hand_eye",
+      std::make_unique<CalibrateHandEyeServer>(nh, "calibrate_hand_eye",
                                           boost::bind(&Camera::onCalibrateHandEye, this, _1));
   calibrateWorkspaceServer =
-      make_unique<CalibrateWorkspaceServer>(nh, "calibrate_workspace",
+      std::make_unique<CalibrateWorkspaceServer>(nh, "calibrate_workspace",
                                             boost::bind(&Camera::onCalibrateWorkspace, this, _1));
 
   image_transport::ImageTransport imageTransport(nh);

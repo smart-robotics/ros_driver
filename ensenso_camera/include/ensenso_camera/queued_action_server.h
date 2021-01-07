@@ -12,8 +12,6 @@
 #include <actionlib/server/action_server.h>
 #include <ros/ros.h>
 
-#include "ensenso_camera/helper.h"
-
 /**
  * An action server that remembers a queue of goals that still have to be
  * processed. This server will never reject or cancel any requests on its own.
@@ -34,7 +32,7 @@ public:
                      bool autoStart = false)
     : nodeHandle(nodeHandle), callback(callback)
   {
-    actionServer = make_unique<actionlib::ActionServer<ActionSpec>>(nodeHandle, name, false);
+    actionServer = std::make_unique<actionlib::ActionServer<ActionSpec>>(nodeHandle, name, false);
     actionServer->registerGoalCallback(boost::bind(&QueuedActionServer::onGoalReceived, this, _1));
     actionServer->registerCancelCallback(boost::bind(&QueuedActionServer::onCancelReceived, this, _1));
 
