@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+import rospy
+import sys
+
+import actionlib
+from actionlib_msgs.msg import GoalStatus
+from ensenso_camera_msgs.msg import RequestDataAction, RequestDataGoal
+
+def connect_to_server(clients, timeout=20):
+
+    for client in clients:
+        if not client.wait_for_server(rospy.Duration(timeout)):
+            rospy.logerr("The camera node is not running!")
+            return False      
+
+def request_image(client):
+    # Disparity Map
+    goal = RequestDataGoal(
+        linked_camera_request=True, request_disparity_map=True, log_time=True, request_depth_map=True,
+    )
+    client.send_goal(goal)
+    client.wait_for_result()
+
+    if client.get_state() != GoalStatus.SUCCEEDED:
+        rospy.logwarn("Action was not successful.")
+    else:
+        result = client.get_result()
+        return result
+
+def main():
+    
+    # Create action client
+    left_img_capture_client = actionlib.SimpleActionClient(
+        "cam_left/request_data", RequestDataAction
+    )
+    right_img_capture_client = actionlib.SimpleActionClient(
+        "cam_right/request_data", RequestDataAction
+    )
+
+    # Connect to server
+    if not connect_to_server([left_img_capture_client, right_img_capture_client]):
+        rospy.logerr("The camera node is not running!")
+        sys.exit()
+
+    while not rospy.is_shutdown():
+        request_image(left_img_capture_client)
+        request_image(right_img_capture_client)
+        rospy.sleep(0.1)
+
+
+if __name__ == "__main__":
+    try:
+        rospy.init_node("ensenso_camera_request_images")
+        main()
+    except rospy.ROSInterruptException:
+        pass
