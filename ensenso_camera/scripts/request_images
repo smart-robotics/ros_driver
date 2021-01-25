@@ -12,11 +12,13 @@ def connect_to_server(clients, timeout=20):
         if not client.wait_for_server(rospy.Duration(timeout)):
             rospy.logerr("The camera node is not running!")
             return False      
+        else: 
+            return True
 
 def request_image(client):
     # Disparity Map
     goal = RequestDataGoal(
-        linked_camera_request=True, request_disparity_map=True, log_time=True, request_depth_map=True,
+        linked_camera_request=True, request_disparity_map=True, log_time=True, request_depth_map=True,request_linked_camera_rgb_image=True
     )
     client.send_goal(goal)
     client.wait_for_result()
@@ -31,10 +33,10 @@ def main():
     
     # Create action client
     left_img_capture_client = actionlib.SimpleActionClient(
-        "cam_left/request_data", RequestDataAction
+        "camera_left/request_data", RequestDataAction
     )
     right_img_capture_client = actionlib.SimpleActionClient(
-        "cam_right/request_data", RequestDataAction
+        "camera_right/request_data", RequestDataAction
     )
 
     # Connect to server
@@ -43,9 +45,11 @@ def main():
         sys.exit()
 
     while not rospy.is_shutdown():
+        rospy.loginfo("Left cam request")
         request_image(left_img_capture_client)
+        rospy.loginfo("Right cam request")
         request_image(right_img_capture_client)
-        rospy.sleep(0.1)
+        rospy.sleep(0.01)
 
 
 if __name__ == "__main__":
