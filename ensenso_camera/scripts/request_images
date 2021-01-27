@@ -5,9 +5,10 @@ import sys
 import actionlib
 from actionlib_msgs.msg import GoalStatus
 from ensenso_camera_msgs.msg import RequestDataAction, RequestDataGoal
+import threading
+import time
 
 def connect_to_server(clients, timeout=20):
-
     for client in clients:
         if not client.wait_for_server(rospy.Duration(timeout)):
             rospy.logerr("The camera node is not running!")
@@ -24,10 +25,17 @@ def request_image(client):
     client.wait_for_result()
 
     if client.get_state() != GoalStatus.SUCCEEDED:
-        rospy.logwarn("Action was not successful.")
+        rospy.logwarn("Action was not successful. Closing...")
+        rospy.signal_shutdown()
     else:
         result = client.get_result()
         return result
+
+def loop_request_image(client):
+    while not rospy.is_shutdown():
+        request_image(client)
+        rospy.sleep(0.01) 
+
 
 def main():
     
@@ -44,11 +52,21 @@ def main():
         rospy.logerr("The camera node is not running!")
         sys.exit()
 
+    left_cam_thread = threading.Thread(loop_request_image, left_img_capture_client)
+    right_cam_thread = threading.Thread(loop_request_image, right_img_capture_client)
+
+    left_cam_thread.start()
+    right_cam_thread.start()
+
+    log_interval = 10
+    last_log = time.time()
+    start_time = time.time()
+
     while not rospy.is_shutdown():
-        rospy.loginfo("Left cam request")
-        request_image(left_img_capture_client)
-        rospy.loginfo("Right cam request")
-        request_image(right_img_capture_client)
+        if time.time() - last_log > log_interval:
+            last_log = time.time()
+            print("Requesting images for {}".format(time.time() - start_time))
+    
         rospy.sleep(0.01)
 
 
