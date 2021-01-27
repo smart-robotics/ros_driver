@@ -52,8 +52,8 @@ def main():
         rospy.logerr("The camera node is not running!")
         sys.exit()
 
-    left_cam_thread = threading.Thread(target=loop_request_image, args=(left_img_capture_client))
-    right_cam_thread = threading.Thread(target=loop_request_image, args=(right_img_capture_client))
+    left_cam_thread = threading.Thread(target=loop_request_image, args=[left_img_capture_client])
+    right_cam_thread = threading.Thread(target=loop_request_image, args=[right_img_capture_client])
 
     left_cam_thread.start()
     right_cam_thread.start()
