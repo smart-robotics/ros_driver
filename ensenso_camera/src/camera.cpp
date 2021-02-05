@@ -55,7 +55,7 @@ int const ERROR_CODE_TF = 101;
     if (EXCEPTION.getErrorCode() == NxLibExecutionFailed) \
     { \
       NxLibItem executionNode(EXCEPTION.getItemPath()); \
-      ROS_ERROR("%s: %s", executionNode[itmResult][itmErrorSymbol].asString().c_str(), \
+      ROS_ERROR("Code %d %s: %s", EXCEPTION.getErrorCode(), executionNode[itmResult][itmErrorSymbol].asString().c_str(), \
                 executionNode[itmResult][itmErrorText].asString().c_str()); \
     } /* NOLINT */ \
   } catch (...) {} /* NOLINT */ \
@@ -376,6 +376,8 @@ bool Camera::loadMonocularSettings(const std::string& paramFile)
     loadMono.parameters()[itmCameras] = linkedMonoCamera.serial;
     loadMono.parameters()[itmFilename] = paramFile;
     loadMono.execute();
+    std::cout << "Finished loading monocular camera settings... " << std::endl;
+
   }
   
   return true;
@@ -603,6 +605,8 @@ void Camera::handleOnRequestData(ensenso_camera_msgs::RequestDataGoalConstPtr co
 
   START_NXLIB_ACTION(RequestData, requestDataServer)
 
+  ROS_INFO("Current %s camera temperature %f ", serial.c_str(), (float) cameraNode[itmSensor][itmTemperature].asDouble());
+
   bool publishResults = goal->publish_results;
   if (!goal->publish_results && !goal->include_results_in_response)
   {
@@ -797,9 +801,15 @@ void Camera::handleLinkedCameraRequestData(ensenso_camera_msgs::RequestDataGoalC
 
   START_NXLIB_ACTION(RequestData, requestDataServer)
 
+  //ROS_INFO("Current %s camera temperature %f ", serial.c_str(), (float) cameraNode[itmSensor][itmTemperature].asDouble());
+
+
+
   // Capture linked camera image and save it to action result
   if(goal->request_linked_camera_rgb_image)
   {
+    //ROS_INFO("Current %s camera temperature %f ", linkedMonoCamera.serial.c_str(),(float) linkedMonoCamera.node[itmSensor][itmTemperature].asDouble());
+
     ros::Time linkedImageTimestamp = captureLinkedCameraImage(&result, goal->log_time);
 
     // Update camera info for the linked camera
@@ -811,134 +821,111 @@ void Camera::handleLinkedCameraRequestData(ensenso_camera_msgs::RequestDataGoalC
   // Capture stereo images and compute disparity map 
   else if(goal->request_disparity_map)
   {
-    
-    // Capture stereo image
-    loadParameterSet(goal->parameter_set, projectorOn);
     auto captureStartTime = std::chrono::high_resolution_clock::now();
-    ros::Time imageTimestamp = capture();
-    
-    // After capturing the image update the matrices with possible new calibration and copy that to result
-    updateCameraInfo(true);
 
-    leftCameraInfo->header.stamp = imageTimestamp;
-    rightCameraInfo->header.stamp = imageTimestamp;
-    result.left_camera_info = *leftCameraInfo;
-    result.right_camera_info = *rightCameraInfo;
-
-    if(goal->log_time)
-      ROS_INFO("Capture stereo data %.3f", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - captureStartTime).count());
-  
-    // Compute disparity map
-    auto disparityMapStartTime = std::chrono::high_resolution_clock::now();
-    NxLibCommand computeDisparityMap(cmdComputeDisparityMap);
-    computeDisparityMap.parameters()[itmCameras] = serial;
-    computeDisparityMap.execute();
-    if(goal->log_time)
-      ROS_INFO("Compute disparity map %.3f", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - disparityMapStartTime ).count());
-
-    if(goal->request_depth_map)
-    {
-      auto setMapStartTime = std::chrono::high_resolution_clock::now();
+    try{
+      // Capture stereo image
+      loadParameterSet(goal->parameter_set, projectorOn);
       
-      NxLibCommand computePointMap(cmdComputePointMap);
-      computePointMap.parameters()[itmCameras] = serial;   
-      computePointMap.execute();
-      cv::Mat depthPointMap;
+      ros::Time imageTimestamp = capture();
 
-      cv::Mat depthMap, floatDepthMap;
-      imageFromNxLibNodeToOpencvMat(depthMap, cameraNode[itmImages][itmPointMap]);
-      depthMap.convertTo(floatDepthMap, CV_32FC3);
+      // After capturing the image update the matrices with possible new calibration and copy that to result
+      updateCameraInfo(true);
 
-      // create a header
-      std_msgs::Header header;
-      header.frame_id = linkedCameraFrame;
-      header.stamp = ros::Time::now();
-
-      // Send only z channel
-      cv::Mat depthMapSplit[3];
-      cv::split(floatDepthMap, depthMapSplit);
-
-      // prepare message
-      cv_bridge::CvImage cv_image(
-        header,
-        sensor_msgs::image_encodings::TYPE_32FC1,
-        depthMapSplit[2]/1000.
-      );
-
-      // Set depth map of action result (3 channel image with 3D Coordinates(x,y,z)): image size is the same as disparity map
-      result.depth_map = *cv_image.toImageMsg();
+      leftCameraInfo->header.stamp = imageTimestamp;
+      rightCameraInfo->header.stamp = imageTimestamp;
+      result.left_camera_info = *leftCameraInfo;
+      result.right_camera_info = *rightCameraInfo;
 
       if(goal->log_time)
-        ROS_INFO("Set disparity map %.3f", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - setMapStartTime ).count());
+        ROS_INFO("Capture stereo data %.3f", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - captureStartTime).count());
+            }
+    catch (NxLibException& e)
+    {
+      ROS_ERROR("Failed to do request stereo images");
+      LOG_NXLIB_EXCEPTION(e)
+    }
+    try{
+      // Compute disparity map
+      auto disparityMapStartTime = std::chrono::high_resolution_clock::now();
+      NxLibCommand computeDisparityMap(cmdComputeDisparityMap);
+      computeDisparityMap.parameters()[itmCameras] = serial;
+      computeDisparityMap.execute();
+      if(goal->log_time)
+        ROS_INFO("Compute disparity map %.3f", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - disparityMapStartTime ).count());
 
-      if(goal->request_rotated_depth_map)
+      if(goal->request_depth_map)
       {
+        auto setMapStartTime = std::chrono::high_resolution_clock::now();
+        
+        NxLibCommand computePointMap(cmdComputePointMap);
+        computePointMap.parameters()[itmCameras] = serial;   
+        computePointMap.execute();
+        cv::Mat depthPointMap;
 
-        auto rgbdImage = computeRotatedDepthMap();
-        cv_bridge::CvImage cv_image_bridge(
+        cv::Mat depthMap, floatDepthMap;
+        imageFromNxLibNodeToOpencvMat(depthMap, cameraNode[itmImages][itmPointMap]);
+        depthMap.convertTo(floatDepthMap, CV_32FC3);
+
+        // create a header
+        std_msgs::Header header;
+        header.frame_id = linkedCameraFrame;
+        header.stamp = ros::Time::now();
+
+        // Send only z channel
+        cv::Mat depthMapSplit[3];
+        cv::split(floatDepthMap, depthMapSplit);
+
+        // prepare message
+        cv_bridge::CvImage cv_image(
           header,
           sensor_msgs::image_encodings::TYPE_32FC1,
-          rgbdImage->depth
+          depthMapSplit[2]/1000.
         );
 
-        result.rotated_depth_map = *cv_image_bridge.toImageMsg();
+        // Set depth map of action result (3 channel image with 3D Coordinates(x,y,z)): image size is the same as disparity map
+        result.depth_map = *cv_image.toImageMsg();
+
+        if(goal->log_time)
+          ROS_INFO("Set disparity map %.3f", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - setMapStartTime ).count());
+
+        if(goal->request_rotated_depth_map)
+        {
+
+          auto rgbdImage = computeRotatedDepthMap();
+          cv_bridge::CvImage cv_image_bridge(
+            header,
+            sensor_msgs::image_encodings::TYPE_32FC1,
+            rgbdImage->depth
+          );
+
+          result.rotated_depth_map = *cv_image_bridge.toImageMsg();
+
+        }
 
       }
 
+      result.success = true;
     }
-
-    result.success = true;
-  }
-  
-  if(goal->request_rgbd)
-  {
-
-    auto rgbdStartTime = std::chrono::high_resolution_clock::now();
-    // Get point cloud from disparity map
-    NxLibCommand computePointMap(cmdComputePointMap);
-    computePointMap.parameters()[itmCameras] = serial;   
-    computePointMap.execute();
-
-    PointCloudROI const* pointCloudROI = 0;
-    if (parameterSets.at(currentParameterSet).useROI)
+    catch (NxLibException& e)
     {
-      pointCloudROI = &parameterSets.at(currentParameterSet).roi;
+      ROS_ERROR("Failed to do request disparity map");
+      LOG_NXLIB_EXCEPTION(e)
     }
-
     
-    auto rgbdImagePtr = rgbdFromNxLib(cameraNode[itmImages][itmPointMap],
-                                      cameraNode[itmCalibration][itmDynamic][itmStereo][itmLeft][itmCamera],
-                                      targetFrame,
-                                      pointCloudROI);
-
-    auto publishRgbdStartTime = std::chrono::high_resolution_clock::now();
-    rgbd::RGBDImage rosRgbdImage;
-    sr::rgbd::toData(*rgbdImagePtr, rosRgbdImage.data);
-    result.rgbd_image = rosRgbdImage;
-
-    if(goal->log_time)
-    {
-      ROS_INFO("Compute rgbd image %.3f", std::chrono::duration<double>(publishRgbdStartTime - rgbdStartTime).count());
-      ROS_INFO("Set action result %.3f", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - publishRgbdStartTime).count());
-    }
-    result.success = true;
 
   }
   
-  // Get registered point cloud
-  if(goal->request_registered_point_cloud)
+  try
   {
-    if(linkedMonoCamera.exists)
+    if(goal->request_rgbd)
     {
-      auto linkedPointCloudStartTime = std::chrono::high_resolution_clock::now();
 
-      // Render part of the point cloud in the view of linked camera
-      NxLibCommand renderPointMap(cmdRenderPointMap);
-      renderPointMap.parameters()[itmCamera] = linkedMonoCamera.serial;
-      renderPointMap.parameters()[itmNear] = 1;
-      renderPointMap.execute();
-      
-      auto publishLinkedPointCloudStartTime = std::chrono::high_resolution_clock::now();
+      auto rgbdStartTime = std::chrono::high_resolution_clock::now();
+      // Get point cloud from disparity map
+      NxLibCommand computePointMap(cmdComputePointMap);
+      computePointMap.parameters()[itmCameras] = serial;   
+      computePointMap.execute();
 
       PointCloudROI const* pointCloudROI = 0;
       if (parameterSets.at(currentParameterSet).useROI)
@@ -946,26 +933,82 @@ void Camera::handleLinkedCameraRequestData(ensenso_camera_msgs::RequestDataGoalC
         pointCloudROI = &parameterSets.at(currentParameterSet).roi;
       }
 
-      // Get point cloud in the correct format and publish it. This point cloud in the frame of the depth camera
-      auto pointCloud = pointCloudFromNxLib(rootNode[itmImages][itmRenderPointMap], targetFrame, pointCloudROI, true);
-      pcl::toROSMsg(*pointCloud, result.registered_point_cloud);
-      auto publishLinkedPointCloudEndTime = std::chrono::high_resolution_clock::now();
+      
+      auto rgbdImagePtr = rgbdFromNxLib(cameraNode[itmImages][itmPointMap],
+                                        cameraNode[itmCalibration][itmDynamic][itmStereo][itmLeft][itmCamera],
+                                        targetFrame,
+                                        pointCloudROI);
+
+      auto publishRgbdStartTime = std::chrono::high_resolution_clock::now();
+      rgbd::RGBDImage rosRgbdImage;
+      sr::rgbd::toData(*rgbdImagePtr, rosRgbdImage.data);
+      result.rgbd_image = rosRgbdImage;
 
       if(goal->log_time)
       {
-        ROS_INFO("Compute registered point cloud %.3f", std::chrono::duration<double>(publishLinkedPointCloudStartTime - linkedPointCloudStartTime).count());
-        ROS_INFO("Set action result %.3f", std::chrono::duration<double>(publishLinkedPointCloudEndTime - publishLinkedPointCloudStartTime).count());
+        ROS_INFO("Compute rgbd image %.3f", std::chrono::duration<double>(publishRgbdStartTime - rgbdStartTime).count());
+        ROS_INFO("Set action result %.3f", std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - publishRgbdStartTime).count());
       }
-
       result.success = true;
-    }
+
+    } 
   }
-  
-  result.disparity_map_scale_factor = (float) cameraNode[itmParameters][itmDisparityMap][itmScaling].asDouble();
+      catch (NxLibException& e)
+    {
+      ROS_ERROR("Failed to do request disparity map");
+      LOG_NXLIB_EXCEPTION(e)
+    }
 
-  requestDataServer->setSucceeded(result);
+    try
+    {
+      // Get registered point cloud
+      if(goal->request_registered_point_cloud)
+      {
+        if(linkedMonoCamera.exists)
+        {
+          auto linkedPointCloudStartTime = std::chrono::high_resolution_clock::now();
 
-  FINISH_NXLIB_ACTION(RequestData)
+          // Render part of the point cloud in the view of linked camera
+          NxLibCommand renderPointMap(cmdRenderPointMap);
+          renderPointMap.parameters()[itmCamera] = linkedMonoCamera.serial;
+          renderPointMap.parameters()[itmNear] = 1;
+          renderPointMap.execute();
+          
+          auto publishLinkedPointCloudStartTime = std::chrono::high_resolution_clock::now();
+
+          PointCloudROI const* pointCloudROI = 0;
+          if (parameterSets.at(currentParameterSet).useROI)
+          {
+            pointCloudROI = &parameterSets.at(currentParameterSet).roi;
+          }
+
+          // Get point cloud in the correct format and publish it. This point cloud in the frame of the depth camera
+          auto pointCloud = pointCloudFromNxLib(rootNode[itmImages][itmRenderPointMap], targetFrame, pointCloudROI, true);
+          pcl::toROSMsg(*pointCloud, result.registered_point_cloud);
+          auto publishLinkedPointCloudEndTime = std::chrono::high_resolution_clock::now();
+
+          if(goal->log_time)
+          {
+            ROS_INFO("Compute registered point cloud %.3f", std::chrono::duration<double>(publishLinkedPointCloudStartTime - linkedPointCloudStartTime).count());
+            ROS_INFO("Set action result %.3f", std::chrono::duration<double>(publishLinkedPointCloudEndTime - publishLinkedPointCloudStartTime).count());
+          }
+
+          result.success = true;
+        }
+      }
+    }    
+  catch (NxLibException& e)
+    {
+      ROS_ERROR("Failed to do request disparity map");
+      LOG_NXLIB_EXCEPTION(e)
+    }
+    
+    result.disparity_map_scale_factor = (float) cameraNode[itmParameters][itmDisparityMap][itmScaling].asDouble();
+
+    requestDataServer->setSucceeded(result);
+
+    FINISH_NXLIB_ACTION(RequestData)
+
 
 }
 
@@ -1685,7 +1728,8 @@ ros::Time Camera::captureLinkedCameraImage(ensenso_camera_msgs::RequestDataResul
 
     }
     catch (NxLibException& e) { // Display NxLib API exceptions, if any
-    printf("An NxLib API error with code %d (%s) occurred while accessing item %s.\n", e.getErrorCode(), e.getErrorText().c_str(), e.getItemPath().c_str());
+
+    printf("An NxLib API error with code %d (%s) occurred while trying to capture monocular cam %s.\n", e.getErrorCode(), e.getErrorText().c_str(), e.getItemPath().c_str());
     }
 
     return timestampFromNxLibNode(linkedMonoCamera.node[itmImages][itmRaw]);

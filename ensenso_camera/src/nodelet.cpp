@@ -132,6 +132,7 @@ void Nodelet::onInit()
   }
 
   camera->startServers();
+  NODELET_DEBUG("Finished starting camera driver");
 }
 
 Nodelet::~Nodelet()
