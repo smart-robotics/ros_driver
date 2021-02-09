@@ -1,12 +1,21 @@
 #!/usr/bin/env python
-import rospy
 import sys
+import argparse
+
+import rospy
 
 import actionlib
 from actionlib_msgs.msg import GoalStatus
 from ensenso_camera_msgs.msg import RequestDataAction, RequestDataGoal
 import threading
 import time
+
+def parse_args(args):
+    parser = argparse.ArgumentParser(description="Script to continuously capture camera images")
+    parser.add_argument("--left", help="If request to left camera", default=True, type=bool)
+    parser.add_argument("--right", help="If request to right camera", default=True, type=bool)
+
+    return parser.parse_args(args)
 
 def connect_to_server(clients, timeout=20):
     for client in clients:
@@ -37,26 +46,33 @@ def loop_request_image(client):
         rospy.sleep(0.01) 
 
 
-def main():
+def main(left_cam, right_cam):
     
     # Create action client
-    left_img_capture_client = actionlib.SimpleActionClient(
-        "camera_left/request_data", RequestDataAction
-    )
-    right_img_capture_client = actionlib.SimpleActionClient(
-        "camera_right/request_data", RequestDataAction
-    )
+    if left_cam:
+        left_img_capture_client = actionlib.SimpleActionClient(
+            "camera_left/request_data", RequestDataAction
+        )
+        # Connect to server
+        if not connect_to_server([left_img_capture_client]):
+            rospy.logerr("The camera node is not running!")
+            sys.exit()
 
-    # Connect to server
-    if not connect_to_server([left_img_capture_client, right_img_capture_client]):
-        rospy.logerr("The camera node is not running!")
-        sys.exit()
+        left_cam_thread = threading.Thread(target=loop_request_image, args=[left_img_capture_client])
+        left_cam_thread.start()
 
-    left_cam_thread = threading.Thread(target=loop_request_image, args=[left_img_capture_client])
-    right_cam_thread = threading.Thread(target=loop_request_image, args=[right_img_capture_client])
+    if right_cam:
+        right_img_capture_client = actionlib.SimpleActionClient(
+            "camera_right/request_data", RequestDataAction
+        )
 
-    left_cam_thread.start()
-    right_cam_thread.start()
+        # Connect to server
+        if not connect_to_server([right_img_capture_client]):
+            rospy.logerr("The camera node is not running!")
+            sys.exit()
+
+        right_cam_thread = threading.Thread(target=loop_request_image, args=[right_img_capture_client])
+        right_cam_thread.start()
 
     log_interval = 10
     last_log = time.time()
@@ -73,6 +89,8 @@ def main():
 if __name__ == "__main__":
     try:
         rospy.init_node("ensenso_camera_request_images")
-        main()
+        args = sys.argv[1:]
+        args = parse_args(args)
+        main(left_cam=args.left, right_cam=args.right)
     except rospy.ROSInterruptException:
         pass
