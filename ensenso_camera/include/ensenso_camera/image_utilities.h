@@ -9,6 +9,9 @@
 
 #include "nxLib.h"
 
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+
 /**
  * Convert the given binary NxLib node to a ROS image message.
  */
@@ -39,6 +42,7 @@ ros::Time timestampFromNxLibNode(NxLibItem const& node);
  * The Image has a canonical format (z-values in Meters, float 1-channel image(TYPE_32FC1))
  */
 sensor_msgs::ImagePtr depthImageFromNxLibNode(NxLibItem const& node, std::string const& frame);
+pcl::PointCloud<pcl::PointXYZ>::Ptr  pclFromNxLibNode(NxLibItem const& node, float cx, float cy, float fx, float fy);
 
 /**
  * Gets the corresponding distortion parameters from the Item.

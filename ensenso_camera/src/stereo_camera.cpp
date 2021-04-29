@@ -12,6 +12,8 @@
 #include <sensor_msgs/distortion_models.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl/io/pcd_io.h>
+#include <cv_bridge/cv_bridge.h>
+#include "ensenso_camera/image_utilities.h"
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, std::string serial, std::string fileCameraPath, bool fixed,
                            std::string cameraFrame, std::string targetFrame, std::string robotFrame,
@@ -356,6 +358,14 @@ void StereoCamera::onRequestData(ensenso_camera_msgs::RequestDataGoalConstPtr co
 
     if (goal->request_depth_image)
     {
+
+      double cx = cameraNode[itmCalibration][itmDynamic][itmStereo][itmLeft][itmCamera][2][0].asDouble();
+      double cy = cameraNode[itmCalibration][itmDynamic][itmStereo][itmLeft][itmCamera][2][1].asDouble();
+      double fx = cameraNode[itmCalibration][itmDynamic][itmStereo][itmLeft][itmCamera][0][0].asDouble();
+      double fy = cameraNode[itmCalibration][itmDynamic][itmStereo][itmLeft][itmCamera][1][1].asDouble();
+      
+      auto cloud = pclFromNxLibNode( cameraNode[itmImages][itmPointMap], float(cx),  float(cy),  float(fx),  float(fy));
+
       if (cameraFrame == targetFrame)
       {
         auto depthImage = depthImageFromNxLibNode(cameraNode[itmImages][itmPointMap], targetFrame);

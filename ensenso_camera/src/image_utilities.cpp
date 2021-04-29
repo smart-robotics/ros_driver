@@ -164,6 +164,35 @@ ros::Time timestampFromNxLibNode(const NxLibItem& node)
   return ros::Time(timestamp - NXLIB_TIMESTAMP_OFFSET);
 }
 
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr pclFromNxLibNode(NxLibItem const& node, float cx, float cy, float fx, float fy)
+{
+  double timestamp;
+  cv::Mat pointMap;
+  node.getBinaryData(pointMap, &timestamp);
+
+  cv::Mat depthImage;
+  cv::extractChannel(pointMap, depthImage, 2);
+  auto cloud = boost::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+
+
+    for(int col=0;col<depthImage.cols;col++){
+      for(int row=0;row<depthImage.rows;row++){
+          float depth = depthImage.at<float>(row,col);
+          if(depth==depth){
+            float x = (col - cx)/fx;
+            float y = (row - cy)/fy;
+            pcl::PointXYZ point(x,y,depth/1000.0f);
+            cloud->push_back(point);
+
+          }
+      }
+    }
+    pcl::io::savePCDFileASCII ("/tmp/depth_map.pcd", *cloud);
+
+  return cloud;
+}
+
 sensor_msgs::ImagePtr depthImageFromNxLibNode(NxLibItem const& node, std::string const& frame)
 {
   double timestamp;
