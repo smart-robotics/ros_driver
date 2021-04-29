@@ -11,6 +11,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/distortion_models.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl/io/pcd_io.h>
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, std::string serial, std::string fileCameraPath, bool fixed,
                            std::string cameraFrame, std::string targetFrame, std::string robotFrame,
@@ -338,6 +339,10 @@ void StereoCamera::onRequestData(ensenso_camera_msgs::RequestDataGoalConstPtr co
     if (requestPointCloud && !goal->request_normals)
     {
       auto pointCloud = pointCloudFromNxLib(cameraNode[itmImages][itmPointMap], targetFrame, pointCloudROI);
+
+      // Save point cloud to pcl format
+      pcl::io::savePCDFileASCII ("/tmp/stereo_pcd.pcd", *pointCloud);
+
 
       if (goal->include_results_in_response)
       {
@@ -1068,6 +1073,7 @@ void StereoCamera::onTexturedPointCloud(ensenso_camera_msgs::TexturedPointCloudG
   if (goal->publish_results || goal->include_results_in_response)
   {
     auto cloudColored = retrieveTexturedPointCloud(renderPointMap.result(), nxLibVersion, targetFrame);
+    pcl::io::savePCDFileASCII ("/tmp/mono_pcd.pcd", *cloudColored);
     if (goal->publish_results)
     {
       pointCloudPublisherColor.publish(cloudColored);
